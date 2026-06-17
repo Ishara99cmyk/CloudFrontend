@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
@@ -7,6 +7,9 @@ function App() {
   const [view, setView] = useState('loading'); // loading, signin, signup, dashboard
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token') || '');
+  const [uploading, setUploading] = useState(false);
+
+  const fileInputRef = useRef(null);
 
   // Form Fields State
   const [username, setUsername] = useState('');
@@ -174,6 +177,94 @@ function App() {
     setView('signin');
   };
 
+  // Handle Profile Picture Upload
+  const handleProfilePictureUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file.');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image size should be less than 5MB.');
+      return;
+    }
+
+    setUploading(true);
+    setError('');
+    setSuccess('');
+
+    const formData = new FormData();
+    formData.append('picture', file);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/profile-picture`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSuccess('Profile picture updated successfully!');
+        setUser(prev => ({
+          ...prev,
+          profile_picture_url: data.profile_picture_url
+        }));
+      } else {
+        setError(data.error || 'Failed to upload profile picture.');
+      }
+    } catch (err) {
+      setError('Server connection error. Please try again.');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Handle Profile Picture Remove
+  const handleProfilePictureRemove = async () => {
+    if (!window.confirm('Are you sure you want to remove your profile picture?')) {
+      return;
+    }
+
+    setUploading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/profile-picture`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSuccess('Profile picture removed successfully!');
+        setUser(prev => ({
+          ...prev,
+          profile_picture_url: null
+        }));
+      } else {
+        setError(data.error || 'Failed to remove profile picture.');
+      }
+    } catch (err) {
+      setError('Server connection error. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   // 1. LOADING VIEW
   if (view === 'loading') {
     return (
@@ -323,12 +414,63 @@ function App() {
 
   // 4. DASHBOARD VIEW (AUTHENTICATED)
   if (view === 'dashboard' && user) {
+    const triggerFileInput = () => {
+      if (!uploading && fileInputRef.current) {
+        fileInputRef.current.click();
+      }
+    };
+
     return (
       <div className="dashboard-container">
         <div className="dashboard-card">
-          <div className="dashboard-avatar">
-            {user.username ? user.username.charAt(0).toUpperCase() : 'U'}
+          {error && <div className="alert alert-error">{error}</div>}
+          {success && <div className="alert alert-success">{success}</div>}
+
+          <div className="avatar-wrapper" onClick={triggerFileInput} title="Click to upload profile picture">
+            {uploading && (
+              <div className="avatar-loading-overlay">
+                <div className="avatar-spinner"></div>
+              </div>
+            )}
+            <div className="dashboard-avatar">
+              {user.profile_picture_url ? (
+                <img
+                  src={user.profile_picture_url}
+                  alt={user.username}
+                  className="avatar-image"
+                />
+              ) : (
+                user.username ? user.username.charAt(0).toUpperCase() : 'U'
+              )}
+              <div className="avatar-overlay">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 4h3l2-2h6l2 2h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6c0-1.1.9-2 2-2m8 3a5 5 0 0 0-5 5 5 5 0 0 0 5 5 5 5 0 0 0 5-5 5 5 0 0 0-5-5m0 2a3 3 0 0 1 3 3 3 3 0 0 1-3 3 3 3 0 0 1-3-3 3 3 0 0 1 3-3z"/>
+                </svg>
+                <span>EDIT</span>
+              </div>
+            </div>
           </div>
+
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleProfilePictureUpload}
+            accept="image/*"
+            style={{ display: 'none' }}
+            disabled={uploading}
+          />
+
+          {user.profile_picture_url && (
+            <div className="avatar-actions">
+              <button
+                onClick={handleProfilePictureRemove}
+                className="avatar-action-btn delete"
+                disabled={uploading}
+              >
+                Remove Photo
+              </button>
+            </div>
+          )}
           
           <div className="auth-header">
             <h1 className="auth-title">Welcome back, {user.username}!</h1>
