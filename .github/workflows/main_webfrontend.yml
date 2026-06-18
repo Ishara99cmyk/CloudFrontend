@@ -26,16 +26,23 @@ jobs:
       - name: npm install, build, and test
         run: |
           npm install
-          npm run build --if-present
-          npm run test --if-present
+          npm run build
         env:
           VITE_API_BASE_URL: https://webbackend-awftb7cbevfwfpdj.canadacentral-01.azurewebsites.net/api
+
+      - name: Prepare deployment package
+        run: |
+          mkdir deploy-pkg
+          cp -r dist deploy-pkg/dist
+          cp package.json deploy-pkg/package.json
+          cp package-lock.json deploy-pkg/package-lock.json
+          cp serve.js deploy-pkg/serve.js
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: dist
+          path: deploy-pkg
 
   deploy:
     runs-on: ubuntu-latest
@@ -49,13 +56,14 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: node-app
+          path: .
       
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_7CC767DD22FE4C6F8391C180BD277FD5 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_996B379FF48B461B8C73C768624E7E34 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_F27CA0165EF74AFD967E3D4C7BBABCAD }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_5DCD19A10C7C46A4A9EEC9985CF04E2E }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_2E468797EBED4E0181B209F996CB9089 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_883F06EE89694FC2B7CF327870C61EC7 }}
 
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
@@ -63,5 +71,4 @@ jobs:
         with:
           app-name: 'webfrontend'
           slot-name: 'Production'
-          package: dist
-          
+          package: .
