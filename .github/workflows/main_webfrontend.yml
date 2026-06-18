@@ -35,7 +35,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: .
+          path: dist
 
   deploy:
     runs-on: ubuntu-latest
@@ -63,5 +63,5 @@ jobs:
         with:
           app-name: 'webfrontend'
           slot-name: 'Production'
-          package: .
+          package: dist
           
