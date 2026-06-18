@@ -28,7 +28,7 @@ jobs:
           npm install
           npm run build
         env:
-          VITE_API_BASE_URL: https://webbackend-awftb7cbevfwfpdj.canadacentral-01.azurewebsites.net/api
+          VITE_API_BASE_URL: https://azurebe-hdfcasbca9bdb9ac.canadacentral-01.azurewebsites.net/api
 
       - name: Prepare deployment package
         run: |
